@@ -1,6 +1,7 @@
 
 import React, { Fragment } from 'react';
 import Autosuggest from 'react-autosuggest';
+import IsolatedScroll from 'react-isolated-scroll';
 import AutosuggestHighlightMatch from 'autosuggest-highlight/match'
 import AutosuggestHighlightParse from 'autosuggest-highlight/parse'
 import './autosuggest.css'; 
@@ -14,7 +15,9 @@ class FocusAutoSuggest extends React.Component {
         super();
         this.state = {
             value: '',
-            suggestions: []
+            suggestions: [],
+            refInc: 0,
+            currentAction: 'type'
         };
     }
     escapeRegexCharacters = (str)  => {
@@ -52,6 +55,7 @@ class FocusAutoSuggest extends React.Component {
     getSuggestionValue = suggestion => suggestion.name;
 
     renderSuggestion =  (suggestion, { query }) => {
+       
     if(suggestion === "No user found" || suggestion === "Type minimum 3 letter"){
         return (
             <div className ={'errorMsg'}>{suggestion}</div>
@@ -59,13 +63,20 @@ class FocusAutoSuggest extends React.Component {
     }
     let idText = this.renderSuggestionSplit(suggestion.id, { query })
     let nameText = this.renderSuggestionSplit(suggestion.name, { query })
+    let itemText = this.renderSuggestionSplit(JSON.stringify(suggestion.items), { query })
     let addressText = this.renderSuggestionSplit(suggestion.address, { query })
     let pinCodeText = this.renderSuggestionSplit(suggestion.pincode, { query })
     
+    if(this.state.currentAction == 'type'){
+        suggestion['uniqueId'] = suggestion.id+"-"+String(this.state.refInc++);
+       // this[suggestion['uniqueId']]= React.createRef();
+    }
+    
     return (
-            <div className={'suggestion-content-parent'}>
+            <div  className= {`suggestion-content-parent ${suggestion.uniqueId}`}>
                 <div><b>{idText}</b></div>
                 <div><i>{nameText}</i></div>
+                <div><i>{itemText}</i></div>
                 <div>{addressText}</div>
                 <div>{pinCodeText}</div>
             </div>)
@@ -94,12 +105,21 @@ class FocusAutoSuggest extends React.Component {
     }
 
 
-    onChange = (event, { newValue }) => {
-        
+    onChange = (event, { newValue, method }) => {
+        if (method == "down" || method == "up") {
+            this.setState({
+                currentAction: 'nonType'
+            });
+            
+        }else if (method == "type") {
         this.setState({
             suggestions: [],
-            value: newValue
+            value: newValue,
+            refInc: 0,
+            currentAction: 'type'
         });
+        }
+   
     };
 
     onSuggestionsFetchRequested = ({ value }) => {
@@ -107,7 +127,8 @@ class FocusAutoSuggest extends React.Component {
             .then(data => {
                 if (data.Error) {
                     this.setState({
-                        suggestions: []
+                        suggestions: [],
+                        refInc: 0
                     });
                 } else {
                     this.setState({
@@ -119,7 +140,8 @@ class FocusAutoSuggest extends React.Component {
 
     onSuggestionsClearRequested = () => {
         this.setState({
-            suggestions: []
+            suggestions: [],
+            refInc: 0
         });
     };
 
@@ -127,10 +149,18 @@ class FocusAutoSuggest extends React.Component {
         
         this.setState({
             suggestions: [],
-            value: ''
+            value: '',
+            refInc: 0
         });
     };
-
+    focusInputOnSuggestionClick = () => {
+    }
+    onSuggestionHighlighted = ({ suggestion }) =>{
+        if(suggestion){
+            let elmnt = window.document.getElementsByClassName(String(suggestion.uniqueId));
+            elmnt[0].scrollIntoView();
+        }
+    };
     render() {
         const { value, suggestions } = this.state;
         const inputProps = {
@@ -145,12 +175,14 @@ class FocusAutoSuggest extends React.Component {
                     <img  alt="Search" className = {"searchLogo"}src={Search}></img>
                 </div>
                 <Autosuggest
+                    
                     className = {"searchInputBox"} 
                     suggestions={suggestions}
                     onSuggestionsFetchRequested={this.onSuggestionsFetchRequested}
                     onSuggestionsClearRequested={this.onSuggestionsClearRequested}
                     getSuggestionValue={this.getSuggestionValue}
                     renderSuggestion={this.renderSuggestion}
+                    onSuggestionHighlighted={this.onSuggestionHighlighted}
                     inputProps={inputProps}
                 />
                 <div className = {"clearLogoContainer"}>
